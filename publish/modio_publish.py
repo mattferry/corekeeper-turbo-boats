@@ -9,20 +9,21 @@ API = os.environ.get("MODIO_API_URL", "https://api.mod.io/v1").rstrip("/")
 GAME = 5289
 NAME_ID = "turboboats"
 HERE = os.path.dirname(os.path.abspath(__file__))
-ZIP = os.path.join(HERE, "TurboBoats-1.0.0.zip")
+ZIP = os.path.join(HERE, "TurboBoats-1.1.0.zip")
 LOGO = os.path.join(HERE, "turboboats-logo.png")
-VERSION = "1.0.0"
-CHANGELOG = "1.0.0 - initial release: Turbo Speeder 2x / 3x / 4x at the Boat Workbench."
+VERSION = "1.1.0"
+CHANGELOG = "1.1.0 - new top tier: Turbo Speeder (5x), pinned ObjectID 40004, filling the last Boat Workbench slot."
 
-SUMMARY = "Three craftable Turbo Speeders at the Boat Workbench: 2x, 3x and 4x the Speeder's speed, costing 2x, 3x and 4x the materials."
-DESCRIPTION = """<p><b>TURBO BOATS</b> adds three faster boats to the Boat Workbench. Each tier multiplies the vanilla Speeder's speed - and its crafting cost - by the same number.</p>
+SUMMARY = "Four craftable Turbo Speeders at the Boat Workbench: 2x, 3x, 4x and 5x the Speeder's speed, costing the same multiple of the materials."
+DESCRIPTION = """<p><b>TURBO BOATS</b> adds four faster boats to the Boat Workbench. Each tier multiplies the vanilla Speeder's speed - and its crafting cost - by the same number.</p>
 <table><tr><th>Item</th><th>Speed</th><th>Recipe (Boat Workbench)</th></tr>
 <tr><td>Turbo Speeder (2x)</td><td>2x Speeder</td><td>400 Coral Plank, 240 Octarine Bar, 60 Gold Bar, 60 Mechanical Part</td></tr>
 <tr><td>Turbo Speeder (3x)</td><td>3x Speeder</td><td>600 Coral Plank, 360 Octarine Bar, 90 Gold Bar, 90 Mechanical Part</td></tr>
-<tr><td>Turbo Speeder (4x)</td><td>4x Speeder</td><td>800 Coral Plank, 480 Octarine Bar, 120 Gold Bar, 120 Mechanical Part</td></tr></table>
+<tr><td>Turbo Speeder (4x)</td><td>4x Speeder</td><td>800 Coral Plank, 480 Octarine Bar, 120 Gold Bar, 120 Mechanical Part</td></tr>
+<tr><td>Turbo Speeder (5x)</td><td>5x Speeder</td><td>1000 Coral Plank, 600 Octarine Bar, 150 Gold Bar, 150 Mechanical Part</td></tr></table>
 <p>The boats look like the vanilla Speeder; the item name colour (Rare / Epic / Legendary) marks the tier.</p>
 <p><b>Multiplayer:</b> must be installed on the server (host) and on every client - boat movement is predicted client-side, so both sides need the same boat data. Dedicated servers: add <code>turboboats</code> to the mods list. No CoreLib needed, no other dependencies. Works on Core Keeper 1.2.1.5.</p>
-<p><b>How it works:</b> at boot the mod clones the game's own Speeder definition three times, scales <code>speedMultiplier</code> and the recipe, registers the clones through the official mod API (at pinned ObjectIDs, so other mods can never shift them) and appends them to the Boat Workbench's recipe list.</p>
+<p><b>How it works:</b> at boot the mod clones the game's own Speeder definition four times, scales <code>speedMultiplier</code> and the recipe, registers the clones through the official mod API (at pinned ObjectIDs, so other mods can never shift them) and appends them to the Boat Workbench's recipe list.</p>
 <p>Companion mod: <a href="https://mod.io/g/corekeeper/m/minecartturbo">Minecart Turbo</a> (same treatment for minecarts).</p>
 <p>Source: <a href="https://github.com/mattferry/corekeeper-turbo-boats">mattferry/corekeeper-turbo-boats</a> (MIT). Written by Claude for the Ferry family server.</p>"""
 

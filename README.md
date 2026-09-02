@@ -1,6 +1,6 @@
 # Turbo Boats — faster Speeders for Core Keeper
 
-Three craftable boats at the Boat Workbench. Each tier multiplies the vanilla Speeder's speed
+Four craftable boats at the Boat Workbench. Each tier multiplies the vanilla Speeder's speed
 multiplier — **and its crafting cost** — by the same number. Pay 3x, sail 3x.
 
 **Get it on mod.io: https://mod.io/g/corekeeper/m/turboboats**
@@ -10,6 +10,7 @@ multiplier — **and its crafting cost** — by the same number. Pay 3x, sail 3x
 | Turbo Speeder (2x) | 2.6x | 400 Coral Plank + 240 Octarine Bar + 60 Gold Bar + 60 Mechanical Part | Rare (blue) |
 | Turbo Speeder (3x) | 3.9x | 600 Coral Plank + 360 Octarine Bar + 90 Gold Bar + 90 Mechanical Part | Epic (purple) |
 | Turbo Speeder (4x) | 5.2x | 800 Coral Plank + 480 Octarine Bar + 120 Gold Bar + 120 Mechanical Part | Legendary (orange) |
+| Turbo Speeder (5x) | 6.5x | 1000 Coral Plank + 600 Octarine Bar + 150 Gold Bar + 150 Mechanical Part | Legendary (orange) |
 
 (Vanilla Speeder: `speedMultiplier` 1.3, 200 Coral Plank + 120 Octarine Bar + 30 Gold Bar +
 30 Mechanical Part.) Works on Core Keeper 1.2.1.5. No CoreLib, no dependencies, no Unity
@@ -24,15 +25,15 @@ Dedicated servers: add `turboboats` to the mods list.
 
 ## How it works
 
-At boot the mod clones the game's own Speeder authoring prefab three times, scales the
+At boot the mod clones the game's own Speeder authoring prefab four times, scales the
 `speedMultiplier`, recipe and sell value per tier, registers the clones through
-`API.Authoring.RegisterAuthoringGameObject`, and appends the three recipes to the Boat
+`API.Authoring.RegisterAuthoringGameObject`, and appends the four recipes to the Boat
 Workbench's `CanCraftObjectsBuffer` when it converts.
 
 ### Pinned ObjectIDs
 
 Unlike sequentially-assigned mod objects (fragile: adding another entity mod later can shift
-IDs and orphan items), the boats **pin** their ObjectIDs at 40001–40003 by pre-seeding
+IDs and orphan items), the boats **pin** their ObjectIDs at 40001–40004 by pre-seeding
 `Manager.mod.Authoring.ObjectIDLookup` before conversion — `ObjectAuthoring`'s
 `TryGetPreferredObjectIndex` honours the seed and the sequential counter never advances for
 them. Boot-time assertions verify the pins landed and that no foreign object sits on those IDs.

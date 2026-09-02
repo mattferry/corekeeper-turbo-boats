@@ -8,7 +8,7 @@ namespace TurboBoats
 {
     /// <summary>
     /// Clones the vanilla Speeder (SpeederBoat) authoring prefab three times at boot, turns each clone into a new
-    /// object ("TurboBoats:Mk1/2/3" = 2x/3x/4x the Speeder's speedMultiplier) with crafting cost scaled by the same
+    /// object ("TurboBoats:Mk1/2/3/4" = 2x/3x/4x/5x the Speeder's speedMultiplier) with crafting cost scaled by the same
     /// multiplier, registers the clones with the official mod API so the game converts them like any other object,
     /// and appends them to the Boat Workbench's recipe list when the workbench is converted.
     ///
@@ -16,8 +16,8 @@ namespace TurboBoats
     /// against any future entity-adding mod), the boats pre-seed Manager.mod.Authoring.ObjectIDLookup BEFORE
     /// conversion. ObjectAuthoring.TryGetPreferredObjectIndex finds the seeded entry and converts each boat at its
     /// pinned ID, and the sequential counter (_nextUnusedObjectIndex) never advances for them - so the live carts
-    /// keep 32768/69/70 with this mod installed, and the boats keep 40001-3 no matter what mods come later.
-    /// Ferry pin registry: 40001-3 taken by TurboBoats; the next Ferry mod starts at 40011.
+    /// keep 32768/69/70 with this mod installed, and the boats keep 40001-4 no matter what mods come later.
+    /// Ferry pin registry: 40001-4 taken by TurboBoats; the next Ferry mod starts at 40011.
     ///
     /// IDENTITY IS PERMANENT: the pinned IDs and the clone GameObject names (the NetCode ghost type is hashed from
     /// them) must NEVER change once boats exist in a world - renaming or re-pinning orphans them.
@@ -42,6 +42,7 @@ namespace TurboBoats
             new Tier { ObjectName = "TurboBoats:Mk1", PinnedID = 40001, Multiplier = 2.0f, Rarity = Rarity.Rare },
             new Tier { ObjectName = "TurboBoats:Mk2", PinnedID = 40002, Multiplier = 3.0f, Rarity = Rarity.Epic },
             new Tier { ObjectName = "TurboBoats:Mk3", PinnedID = 40003, Multiplier = 4.0f, Rarity = Rarity.Legendary },
+            new Tier { ObjectName = "TurboBoats:Mk4", PinnedID = 40004, Multiplier = 5.0f, Rarity = Rarity.Legendary },
         };
 
         private const string Tag = "[TurboBoats] ";
@@ -325,10 +326,10 @@ namespace TurboBoats
                         LogRecipeResolution(tier, authoring);
                     }
                 }
-                if (!ours && (int)id >= 40001 && (int)id <= 40003)
+                if (!ours && (int)id >= 40001 && (int)id <= 40004)
                 {
                     Debug.LogError(Tag + "FOREIGN OBJECT AT PINNED ID: '" + authoring.name + "' converted as ObjectID " + (int)id
-                                   + " (world '" + entityManager.World.Name + "') - collides with the TurboBoats pin range.");
+                                   + " (world '" + entityManager.World.Name + "') - collides with the TurboBoats pin range (40001-4).");
                 }
                 if (id == ObjectID.BoatWorkbench) AddRecipes(entity, entityManager);
             }

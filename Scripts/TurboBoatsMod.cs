@@ -4,7 +4,7 @@ using UnityEngine;
 namespace TurboBoats
 {
     /// <summary>
-    /// Mod entry point. Adds three crafted boat tiers (2x / 3x / 4x the Speeder's speed, recipe scaled by the same
+    /// Mod entry point. Adds four crafted boat tiers (2x / 3x / 4x / 5x the Speeder's speed, recipe scaled by the same
     /// multiplier) to the Boat Workbench. Must be installed on the server AND every client (requiredOn = 3):
     /// boat movement is client-predicted, so both sides must agree on the boat's speedMultiplier.
     ///
@@ -15,11 +15,11 @@ namespace TurboBoats
     public class TurboBoatsMod : IMod
     {
         public const string Name = "Turbo Boats";
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         public void EarlyInit()
         {
-            Debug.Log("[TurboBoats] " + Version + " loaded - Turbo Speeder (2x / 3x / 4x) at the Boat Workbench.");
+            Debug.Log("[TurboBoats] " + Version + " loaded - Turbo Speeder (2x / 3x / 4x / 5x) at the Boat Workbench.");
         }
 
         public void Init() { }
