@@ -24,7 +24,7 @@ DESCRIPTION = """<p><b>TURBO BOATS</b> adds three faster boats to the Boat Workb
 <p><b>Multiplayer:</b> must be installed on the server (host) and on every client - boat movement is predicted client-side, so both sides need the same boat data. Dedicated servers: add <code>turboboats</code> to the mods list. No CoreLib needed, no other dependencies. Works on Core Keeper 1.2.1.5.</p>
 <p><b>How it works:</b> at boot the mod clones the game's own Speeder definition three times, scales <code>speedMultiplier</code> and the recipe, registers the clones through the official mod API (at pinned ObjectIDs, so other mods can never shift them) and appends them to the Boat Workbench's recipe list.</p>
 <p>Companion mod: <a href="https://mod.io/g/corekeeper/m/minecartturbo">Minecart Turbo</a> (same treatment for minecarts).</p>
-<p>Source: <a href="https://github.com/mattferry/agentic">mattferry/agentic</a> (corekeeper/turboboats). Written by Claude for the Ferry family server.</p>"""
+<p>Source: <a href="https://github.com/mattferry/corekeeper-turbo-boats">mattferry/corekeeper-turbo-boats</a> (MIT). Written by Claude for the Ferry family server.</p>"""
 
 def req(method, path, fields=None, files=None, json_body=None):
     url = API + path
@@ -66,7 +66,7 @@ if mod:
 else:
     s, mod = req("POST", "/games/%d/mods" % GAME,
                  fields={"name": "Turbo Boats", "name_id": NAME_ID, "summary": SUMMARY, "description": DESCRIPTION,
-                         "visible": "1", "homepage_url": "https://github.com/mattferry/agentic"},
+                         "visible": "1", "homepage_url": "https://github.com/mattferry/corekeeper-turbo-boats"},
                  files={"logo": ("turboboats-logo.png", open(LOGO, "rb").read())})
     print("create mod:", s, mod.get("id") or mod)
     if s not in (200, 201): sys.exit("mod creation failed")
