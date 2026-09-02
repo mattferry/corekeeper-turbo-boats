@@ -1,0 +1,29 @@
+{
+    "guid": "484abdaff44d4dc8a51310decf533ae5",
+    "name": "TurboBoats",
+    "displayName": "Turbo Boats",
+    "skipSafetyChecks": false,
+    "disableScripts": false,
+    "accessesExtraAssemblies": true,
+    "disableHarmonyPatching": false,
+    "requiredOn": 3,
+    "files": [
+        {
+            "path": "Scripts/TurboBoatsMod.cs",
+            "guid": "d765ebae9a4f4769bf7671b89e713e40"
+        },
+        {
+            "path": "Scripts/TurboBoatsPatches.cs",
+            "guid": "ef63bf24338d4ddfba31008ebb527ef3"
+        },
+        {
+            "path": "Scripts/TurboBoatsRegistry.cs",
+            "guid": "b4de95e74bad457fa7e35530e65d9d6b"
+        },
+        {
+            "path": "Localization/Localization.csv",
+            "guid": "c72e21efb2864c16b481dd3c0b5c3964"
+        }
+    ],
+    "dependencies": []
+}
