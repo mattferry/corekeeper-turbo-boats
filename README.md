@@ -7,15 +7,16 @@ multiplier — **and its crafting cost** — by the same number. Pay 3x, sail 3x
 
 | Item | Speed (vs basic Boat) | Recipe (Boat Workbench) | Name colour |
 |---|---|---|---|
-| Turbo Speeder (2x) | 2.6x | 400 Coral Plank + 240 Octarine Bar + 60 Gold Bar + 60 Mechanical Part | Rare (blue) |
-| Turbo Speeder (3x) | 3.9x | 600 Coral Plank + 360 Octarine Bar + 90 Gold Bar + 90 Mechanical Part | Epic (purple) |
-| Turbo Speeder (4x) | 5.2x | 800 Coral Plank + 480 Octarine Bar + 120 Gold Bar + 120 Mechanical Part | Legendary (orange) |
-| Turbo Speeder (5x) | 6.5x | 1000 Coral Plank + 600 Octarine Bar + 150 Gold Bar + 150 Mechanical Part | Legendary (orange) |
+| Turbo Speeder (2x) | 2.6x | 200 Coral Plank + 160 Octarine Bar + 60 Gold Bar + 30 Mechanical Part | Rare (blue) |
+| Turbo Speeder (3x) | 3.9x | 300 Coral Plank + 240 Octarine Bar + 90 Gold Bar + 45 Mechanical Part | Epic (purple) |
+| Turbo Speeder (4x) | 5.2x | 400 Coral Plank + 320 Octarine Bar + 120 Gold Bar + 60 Mechanical Part | Legendary (orange) |
+| Turbo Speeder (5x) | 6.5x | 500 Coral Plank + 400 Octarine Bar + 150 Gold Bar + 75 Mechanical Part | Legendary (orange) |
 
-(Vanilla Speeder: `speedMultiplier` 1.3, 200 Coral Plank + 120 Octarine Bar + 30 Gold Bar +
-30 Mechanical Part.) Works on Core Keeper 1.2.1.5. No CoreLib, no dependencies, no Unity
-project — the game compiles these sources itself at boot (official PugMod system). Land is a
-suggestion. Docking is a skill.
+(Vanilla Speeder on 1.3.0: `speedMultiplier` 1.3, 100 Coral Plank + 80 Octarine Bar + 30 Gold Bar +
+15 Mechanical Part — the game rebalanced the Speeder in 1.3.0; the mod always scales whatever the
+game's current recipe is, so these columns follow it.) Works on Core Keeper 1.3.0 (1.2.0+, tested on 1.3.0.6; 1.1.0 was the last
+build for 1.2.1.5). No CoreLib, no dependencies, no Unity project — the game compiles these
+sources itself at boot (official PugMod system). Land is a suggestion. Docking is a skill.
 
 ## Multiplayer
 
@@ -25,10 +26,14 @@ Dedicated servers: add `turboboats` to the mods list.
 
 ## How it works
 
-At boot the mod clones the game's own Speeder authoring prefab four times, scales the
-`speedMultiplier`, recipe and sell value per tier, registers the clones through
-`API.Authoring.RegisterAuthoringGameObject`, and appends the four recipes to the Boat
-Workbench's `CanCraftObjectsBuffer` when it converts.
+In `IMod.EarlyInit` the mod creates four empty runtime `EntityAuthoringDataBlock`s through
+`API.DataBlocks`. Then, in a Harmony prefix on `ECSManager.Init`, it finds the game's own
+Speeder authoring prefab among `ScriptableData.GetDataBlocks<EntityAuthoringDataBlock>()`,
+clones it four times, scales the `speedMultiplier`, recipe and sell value per tier, attaches
+each clone to its data block, and appends the four recipes to the Boat Workbench's
+`CanCraftObjectsBuffer` when it converts. (Core Keeper 1.3.0 builds both the entity conversion
+and the object database only from data blocks — the mod API's `RegisterAuthoringGameObject`
+list is no longer converted; see the Minecart Turbo README for the full story.)
 
 ### Pinned ObjectIDs
 

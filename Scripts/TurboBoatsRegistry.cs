@@ -7,17 +7,24 @@ using UnityEngine;
 namespace TurboBoats
 {
     /// <summary>
-    /// Clones the vanilla Speeder (SpeederBoat) authoring prefab three times at boot, turns each clone into a new
-    /// object ("TurboBoats:Mk1/2/3/4" = 2x/3x/4x/5x the Speeder's speedMultiplier) with crafting cost scaled by the same
-    /// multiplier, registers the clones with the official mod API so the game converts them like any other object,
-    /// and appends them to the Boat Workbench's recipe list when the workbench is converted.
+    /// Clones the vanilla Speeder (SpeederBoat) authoring prefab four times at boot, turns each clone into a new
+    /// object ("TurboBoats:Mk1/2/3/4" = 2x/3x/4x/5x the Speeder's speedMultiplier) with crafting cost scaled by the
+    /// same multiplier, hands each clone to the game as an EntityAuthoringDataBlock so it is converted and databased
+    /// like any vanilla object, and appends the recipes to the Boat Workbench's recipe list when the workbench is converted.
     ///
-    /// PINNED ObjectIDs: unlike MinecartTurbo (whose carts took sequential IDs 32768-70 in name-hash order, fragile
-    /// against any future entity-adding mod), the boats pre-seed Manager.mod.Authoring.ObjectIDLookup BEFORE
-    /// conversion. ObjectAuthoring.TryGetPreferredObjectIndex finds the seeded entry and converts each boat at its
-    /// pinned ID, and the sequential counter (_nextUnusedObjectIndex) never advances for them - so the live carts
-    /// keep 32768/69/70 with this mod installed, and the boats keep 40001-4 no matter what mods come later.
-    /// Ferry pin registry: 40001-4 taken by TurboBoats; the next Ferry mod starts at 40011.
+    /// CORE KEEPER 1.3.0 (the 1.2.0 port): the game no longer keeps its object prefabs in PugDatabaseAuthoring.prefabList.
+    /// Every object is now an EntityAuthoringDataBlock (a ScriptableDataBlock loaded through Addressables), and BOTH the
+    /// conversion pass (PugDatabaseConverter) and the object database blob (PugDatabasePostConverter - the thing every
+    /// recipe / inventory / placement lookup reads) are built ONLY from ScriptableData.GetDataBlocks&lt;EntityAuthoringDataBlock&gt;().
+    /// The mod API's RegisterAuthoringGameObject list (ExtraAuthoring) is no longer converted at all. So a mod object must
+    /// be a runtime EntityAuthoringDataBlock, and those can only be created in IMod.EarlyInit (before data loading starts)
+    /// - which is before the vanilla Speeder prefab exists to clone from. Hence the two-step dance below: EarlyInit
+    /// creates empty blocks (fixed addresses), and the ECSManager.Init prefix attaches the clones to them.
+    ///
+    /// PINNED ObjectIDs: the boats pre-seed Manager.mod.Authoring.ObjectIDLookup BEFORE conversion, so
+    /// ObjectAuthoring.TryGetPreferredObjectIndex converts each boat at its pinned ID (40001-4) no matter in which
+    /// order the data blocks convert or what other mods are installed. Ferry pin registry: 32768-70 MinecartTurbo,
+    /// 40001-4 TurboBoats, 40011 StorageScanner; the next Ferry entity mod starts at 40021.
     ///
     /// IDENTITY IS PERMANENT: the pinned IDs and the clone GameObject names (the NetCode ghost type is hashed from
     /// them) must NEVER change once boats exist in a world - renaming or re-pinning orphans them.
@@ -32,36 +39,95 @@ namespace TurboBoats
         {
             public string ObjectName;   // registered object name -> localization key "Items/<name with : as _>"
             public int PinnedID;        // permanent ObjectID, pre-seeded into ObjectIDLookup before conversion
+            public string BlockAddress; // fixed address of the tier's runtime EntityAuthoringDataBlock (stable across boots)
             public float Multiplier;    // applied to the Speeder's speedMultiplier, every recipe ingredient and the sell value
             public Rarity Rarity;       // purely cosmetic: name colour in the UI marks the tier
+            public EntityAuthoringDataBlock Block;   // created in EarlyInit, prefab attached at registration
             public string CloneName { get { return ObjectName.Replace(':', '_'); } }   // ghost type derives from this
         }
 
         private static readonly Tier[] Tiers =
         {
-            new Tier { ObjectName = "TurboBoats:Mk1", PinnedID = 40001, Multiplier = 2.0f, Rarity = Rarity.Rare },
-            new Tier { ObjectName = "TurboBoats:Mk2", PinnedID = 40002, Multiplier = 3.0f, Rarity = Rarity.Epic },
-            new Tier { ObjectName = "TurboBoats:Mk3", PinnedID = 40003, Multiplier = 4.0f, Rarity = Rarity.Legendary },
-            new Tier { ObjectName = "TurboBoats:Mk4", PinnedID = 40004, Multiplier = 5.0f, Rarity = Rarity.Legendary },
+            new Tier { ObjectName = "TurboBoats:Mk1", PinnedID = 40001, BlockAddress = "d269d55b-19af-414b-8f97-bd1a397285a0", Multiplier = 2.0f, Rarity = Rarity.Rare },
+            new Tier { ObjectName = "TurboBoats:Mk2", PinnedID = 40002, BlockAddress = "a2204625-d1d6-41e6-882a-758cc32addfe", Multiplier = 3.0f, Rarity = Rarity.Epic },
+            new Tier { ObjectName = "TurboBoats:Mk3", PinnedID = 40003, BlockAddress = "d624afda-17c4-4fda-b8e8-ec0e02bb43ef", Multiplier = 4.0f, Rarity = Rarity.Legendary },
+            new Tier { ObjectName = "TurboBoats:Mk4", PinnedID = 40004, BlockAddress = "407036a2-42ad-4097-a26e-e3637a68e7fc", Multiplier = 5.0f, Rarity = Rarity.Legendary },
         };
 
         private const string Tag = "[TurboBoats] ";
 
+        private static bool _blocksCreated;
         private static bool _attempted;
         private static bool _subscribed;
         private static readonly List<GameObject> _clones = new List<GameObject>();
 
-        /// <summary>Idempotent. Safe to call every frame; does real work exactly once, before ECSManager.Init runs.</summary>
+        /// <summary>
+        /// Step 1, from IMod.EarlyInit: create one empty runtime EntityAuthoringDataBlock per tier. The mod loader only
+        /// allows this before ScriptableData loading starts, so it cannot wait for the vanilla prefab. Idempotent.
+        /// </summary>
+        public static void CreateDataBlocks(IMod owner)
+        {
+            if (_blocksCreated) return;
+            _blocksCreated = true;
+            try
+            {
+                if (API.DataBlocks == null)
+                {
+                    Debug.LogError(Tag + "API.DataBlocks is unavailable - cannot create runtime data blocks. Turbo boats NOT added.");
+                    return;
+                }
+                long modId;
+                if (!TryGetModId(owner, out modId))
+                {
+                    Debug.LogError(Tag + "could not find this mod's id in API.ModLoader.LoadedMods. Turbo boats NOT added.");
+                    return;
+                }
+                int created = 0;
+                foreach (Tier tier in Tiers)
+                {
+                    EntityAuthoringDataBlock block = API.DataBlocks.CreateRuntimeInstance<EntityAuthoringDataBlock>(modId, new DataBlockAddress(tier.BlockAddress));
+                    block.name = tier.CloneName;   // named so the game's own "expected to point to a valid prefab" error would identify us
+                    tier.Block = block;
+                    created++;
+                }
+                Debug.Log(Tag + "created " + created + " runtime EntityAuthoringDataBlock(s) for mod id " + modId + " (prefabs attach at ECSManager.Init)");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(Tag + "runtime data block creation failed - turbo boats NOT added: " + e);
+            }
+        }
+
+        private static bool TryGetModId(IMod owner, out long modId)
+        {
+            modId = 0;
+            if (API.ModLoader == null) return false;
+            foreach (LoadedMod mod in API.ModLoader.LoadedMods)
+            {
+                if (mod != null && mod.Handlers != null && mod.Handlers.Contains(owner)) { modId = mod.ModId; return true; }
+            }
+            foreach (LoadedMod mod in API.ModLoader.LoadedMods)
+            {
+                if (mod != null && mod.Metadata.name == TurboBoatsMod.ModName) { modId = mod.ModId; return true; }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Step 2. Idempotent; safe to call every frame. Does real work exactly once: after the data blocks are loaded
+        /// (so the vanilla Speeder exists) and before ECSManager.Init's body runs (so our blocks still get converted).
+        /// </summary>
         public static void TryRegister(string source)
         {
             if (_attempted) return;
+            if (!ScriptableData.isLoaded) return;   // vanilla data blocks not in memory yet - try again later
             if (Manager.main == null) return;
             ECSManager ecs = Manager.ecs;
-            if (ecs == null || ecs.pugDatabase == null || API.Authoring == null) return;
+            if (ecs == null || API.Authoring == null) return;
             if (ecs.BlobAssetStore.IsCreated)
             {
-                // Init's body has already started/finished: registering now would add authoring objects that never
-                // get converted. Refuse loudly instead of half-working.
+                // Init's body has already started/finished: attaching prefabs now would be too late for conversion.
+                // Refuse loudly instead of half-working.
                 _attempted = true;
                 Debug.LogError(Tag + "too late to register (" + source + "): ECSManager.Init already ran. Turbo boats NOT added.");
                 return;
@@ -69,7 +135,7 @@ namespace TurboBoats
             _attempted = true;
             try
             {
-                Register(ecs, source);
+                Register(source);
             }
             catch (Exception e)
             {
@@ -77,12 +143,20 @@ namespace TurboBoats
             }
         }
 
-        private static void Register(ECSManager ecs, string source)
+        private static void Register(string source)
         {
-            MonoBehaviour vanilla = FindVanillaSpeeder(ecs.pugDatabase.prefabList);
+            foreach (Tier tier in Tiers)
+            {
+                if (tier.Block == null)
+                {
+                    Debug.LogError(Tag + "runtime data block for " + tier.ObjectName + " was not created in EarlyInit - turbo boats NOT added.");
+                    return;
+                }
+            }
+            MonoBehaviour vanilla = FindVanillaSpeeder();
             if (vanilla == null)
             {
-                Debug.LogError(Tag + "vanilla Speeder (SpeederBoat) authoring prefab not found in PugDatabase - turbo boats NOT added.");
+                Debug.LogError(Tag + "vanilla Speeder (SpeederBoat) authoring prefab not found among the EntityAuthoringDataBlocks - turbo boats NOT added.");
                 return;
             }
             if (!SeedPinnedObjectIDs())
@@ -95,7 +169,8 @@ namespace TurboBoats
             {
                 GameObject clone = CloneBoat(vanilla.gameObject, tier);
                 if (clone == null) continue;
-                API.Authoring.RegisterAuthoringGameObject(clone);
+                tier.Block.prefab = clone;                          // what the 1.3.0 converter and database actually read
+                API.Authoring.RegisterAuthoringGameObject(clone);   // keeps the "Mod objects" category + PugDatabase registry in sync
                 _clones.Add(clone);
             }
             Debug.Log(Tag + "registered " + _clones.Count + " turbo boat prefab(s) cloned from '" + vanilla.name + "' (" + source + ")");
@@ -103,9 +178,7 @@ namespace TurboBoats
 
         /// <summary>
         /// Pre-seeds the name->ObjectID lookup so ObjectAuthoring.TryGetPreferredObjectIndex converts each boat at
-        /// its pinned ID instead of consuming a sequential index. Deliberately seeds ONLY the boat names: if
-        /// existing sequential objects (the carts) were seeded too, the sequential counter would stay behind them
-        /// and hand their IDs to the next entity-adding mod.
+        /// its pinned ID instead of consuming a sequential index. Seeds ONLY the boat names.
         /// </summary>
         private static bool SeedPinnedObjectIDs()
         {
@@ -134,20 +207,36 @@ namespace TurboBoats
             return true;
         }
 
-        private static MonoBehaviour FindVanillaSpeeder(List<MonoBehaviour> prefabList)
+        /// <summary>
+        /// Vanilla ingredient names must resolve BEFORE ECSManager.Init snapshots our ObjectInfo into PugDatabase
+        /// (the crafting handler reads that snapshot, and it is never refreshed). The converters add the same
+        /// name->ID pairs later, so seeding them early is harmless.
+        /// </summary>
+        private static void SeedVanillaName(string name, ObjectID id)
         {
-            if (prefabList == null) return null;
-            foreach (MonoBehaviour mono in prefabList)
+            Dictionary<string, ObjectID> lookup = Manager.mod.Authoring.ObjectIDLookup;
+            if (lookup == null) return;
+            ObjectID existing;
+            if (lookup.TryGetValue(name, out existing))
             {
-                if (mono == null) continue;
-                EntityMonoBehaviourData embd = mono as EntityMonoBehaviourData;
-                if (embd != null)
-                {
-                    if (embd.objectInfo != null && embd.objectInfo.objectID == ObjectID.SpeederBoat && embd.objectInfo.variation == 0) return mono;
-                    continue;
-                }
-                ObjectAuthoring oa = mono as ObjectAuthoring;
-                if (oa != null && oa.objectName == "SpeederBoat" && oa.variation == 0) return mono;
+                if (existing != id) Debug.LogError(Tag + "ingredient '" + name + "' is already mapped to " + (int)existing + ", expected " + (int)id);
+                return;
+            }
+            lookup.Add(name, id);
+        }
+
+        private static MonoBehaviour FindVanillaSpeeder()
+        {
+            IReadOnlyList<EntityAuthoringDataBlock> blocks = ScriptableData.GetDataBlocks<EntityAuthoringDataBlock>();
+            if (blocks == null) return null;
+            foreach (EntityAuthoringDataBlock block in blocks)
+            {
+                if (block == null || block.prefab == null) continue;
+                IEntityMonoBehaviourData data = block.prefab.GetComponent(typeof(IEntityMonoBehaviourData)) as IEntityMonoBehaviourData;
+                if (data == null) continue;
+                ObjectInfo info = data.ObjectInfo;
+                if (info == null || info.objectID != ObjectID.SpeederBoat || info.variation != 0) continue;
+                return data as MonoBehaviour;
             }
             return null;
         }
@@ -241,9 +330,21 @@ namespace TurboBoats
             oa.salvageMultiplier = info.salvageMultiplier;
             oa.isCustomScenePrefab = info.isCustomScenePrefab;
             oa.additionalSprites = info.additionalSprites;
-            if (info.prefabInfos != null && info.prefabInfos.Count > 0 && info.prefabInfos[0].prefab != null)
+            PrefabInfo prefabInfo = info.prefabInfo;
+            if (prefabInfo != null)
             {
-                oa.graphicalPrefab = info.prefabInfos[0].prefab.gameObject;   // same visuals as the vanilla Speeder
+                // 1.3.0: visuals are a GraphicalObjectDataBlock reference (pooled by address); the GameObject is the
+                // fallback the converter uses when the reference is empty. Carry both = same visuals as the vanilla Speeder.
+                oa.graphicalRef = prefabInfo.graphicalRef;
+                oa.graphicalPrefab = prefabInfo.GetGraphical();
+            }
+            else
+            {
+                Debug.LogWarning(Tag + "vanilla Speeder ObjectInfo has no prefabInfo - clone will have no visuals.");
+            }
+            if (info.iconSkinAssetRef.hasAddress)
+            {
+                Debug.LogWarning(Tag + "vanilla Speeder has an icon skin reference that ObjectAuthoring cannot carry - the inventory icon may differ.");
             }
 
             InventoryItemAuthoring item = GetOrAdd<InventoryItemAuthoring>(clone);
@@ -259,9 +360,11 @@ namespace TurboBoats
             {
                 foreach (CraftingObject ingredient in info.requiredObjectsToCraft)
                 {
+                    string ingredientName = ingredient.objectID.ToString();
+                    SeedVanillaName(ingredientName, ingredient.objectID);
                     item.requiredObjectsToCraft.Add(new InventoryItemAuthoring.CraftingObject
                     {
-                        objectName = ingredient.objectID.ToString(),
+                        objectName = ingredientName,
                         amount = ingredient.amount
                     });
                 }
@@ -299,7 +402,7 @@ namespace TurboBoats
             _subscribed = true;
         }
 
-        /// <summary>Fires once per converted object type (after all conversion). Hooks the Boat Workbench.</summary>
+        /// <summary>Fires once per converted object type per world (after conversion). Hooks the Boat Workbench.</summary>
         private static void OnObjectTypeAdded(Entity entity, GameObject authoring, EntityManager entityManager)
         {
             try
@@ -341,8 +444,8 @@ namespace TurboBoats
 
         /// <summary>
         /// Every ingredient name must resolve to a real ObjectID by the time the database is built, or the item
-        /// crafts for free with an empty requirement list. MinecartTurbo only ever verified the recipe COUNT on the
-        /// forge; log the resolved content here so the boot log proves the recipes are real.
+        /// crafts for free with an empty requirement list. Log the resolved content so the boot log proves the
+        /// recipes are real.
         /// </summary>
         private static void LogRecipeResolution(Tier tier, GameObject authoring)
         {
@@ -376,7 +479,7 @@ namespace TurboBoats
         /// scene objects, so without this every world gets LIVE boat entities that never register in the NetCode
         /// ghost collection, and clients crash with "Could not find ghost type in the collection" the moment their
         /// world ticks. This handler runs BEFORE GhostPostConverter, so tagging here makes ghost conversion treat
-        /// the boats exactly like vanilla prefab assets.
+        /// the boats exactly like vanilla prefab assets. Still true in 1.3.0.
         /// </summary>
         private static void MakeProperPrefab(Entity entity, EntityManager entityManager, string objectName)
         {

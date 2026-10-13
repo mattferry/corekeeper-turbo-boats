@@ -8,8 +8,8 @@ User-Agent-less request gets 403 — the script sends its own UA).
 
 To ship an update: bump VERSION in the script, rebuild the zip from the mod folder (ModManifest.json + Scripts/ +
 Localization/ at the zip root — NEVER change the manifest guid, the object names `TurboBoats:MkN`, the clone
-names, or the pinned ObjectIDs 40001-3), place it next to the script as TurboBoats-<VERSION>.zip, adjust ZIP,
+names, or the pinned ObjectIDs 40001-4), place it next to the script as TurboBoats-<VERSION>.zip, adjust ZIP,
 run. The logo only needs passing on first creation.
 
-Ferry ObjectID pin registry: TurboBoats holds 40001-40003. The next Ferry entity-adding mod starts at 40011.
+Ferry ObjectID pin registry: MinecartTurbo 32768-32770, TurboBoats 40001-40004, StorageScanner 40011. The next Ferry entity-adding mod starts at 40021.
 Multipliers, recipes and localization stay freely tunable in updates — only names and pins are identity.
