@@ -8,18 +8,22 @@ namespace TurboBoats
     /// multiplier) to the Boat Workbench. Must be installed on the server AND every client (requiredOn = 3):
     /// boat movement is client-predicted, so both sides must agree on the boat's speedMultiplier.
     ///
-    /// Registration happens in a Harmony prefix on ECSManager.Init (see TurboBoatsPatches) - that is the last
-    /// moment before the game converts the mod's extra authoring objects. Update() is a belt-and-braces fallback
-    /// that does the same thing earlier if the prefix did not apply; both paths are idempotent.
+    /// Two-step registration (Core Keeper 1.3.0+): EarlyInit creates the tiers' runtime data blocks (only allowed
+    /// before the game loads its data), then a Harmony prefix on ECSManager.Init (see TurboBoatsPatches) clones the
+    /// vanilla Speeder into them (and seeds the pinned ObjectIDs) - the last moment before the game converts the
+    /// data blocks into entities. Update() is a belt-and-braces fallback that does the same thing earlier if the
+    /// prefix did not apply; both paths are idempotent.
     /// </summary>
     public class TurboBoatsMod : IMod
     {
         public const string Name = "Turbo Boats";
-        public const string Version = "1.1.0";
+        public const string ModName = "TurboBoats";   // ModManifest.json "name"
+        public const string Version = "1.2.0";
 
         public void EarlyInit()
         {
             Debug.Log("[TurboBoats] " + Version + " loaded - Turbo Speeder (2x / 3x / 4x / 5x) at the Boat Workbench.");
+            TurboBoatsRegistry.CreateDataBlocks(this);
         }
 
         public void Init() { }
